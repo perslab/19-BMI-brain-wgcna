@@ -1,0 +1,216 @@
+---
+title: 'BMI-brain: WGCNA module - celltype specificity'
+author: "Jon Thompson, Pers lab"
+date: "`r Sys.time()`"
+output:
+  html_notebook:
+    df_print: paged
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+# setup
+
+
+## source
+```{r}
+source(file="/projects/jonatan/tools/functions-src/utility_functions.R")
+source(file="/projects/jonatan/tools/functions-src/functions_sc.R")
+```
+
+## packages
+
+```{r}
+
+ipak(c("Matrix","dplyr", "parallel", "reshape", "reshape2", "ggplot2", "plotly"))
+#ipak(c("ComplexHeatmap", "igraph", "WGCNA", "RColorBrewer"))
+#ipak(c("corrr", "ggraph", "here", "tidygraph", "tidyverse"))
+
+```
+
+## options
+
+```{r}
+options(stringsAsFactors = F, use= "pairwise.complete.obs", warn=1)
+```
+
+## constants
+
+```{r}
+
+ncelltypes =11
+p.val.threshold = 5e-2
+
+dirOut <- "/projects/jonatan/applied/18-mousebrain_7/"
+# Set paths
+dirTables = paste0(dirOut, "tables/")
+dirLog <- paste0(dirOut, "log/")
+dirRObjects <- paste0(dirOut, "RObjects/")
+dirPlots <- paste0(dirOut, "plots/")
+dirScratch = "/scratch/jonatan/"
+
+# Make directories
+for (direc in list(dirLog, dirRObjects, dirPlots)) {
+  if (!file.exists(direc)) {
+    dir.create(direc)
+  }
+}
+
+flag_date = substr(gsub("-","",as.character(Sys.Date())),3,1000)
+prefixOut <- paste0("mb_7.2_", flag_date)
+```
+
+
+```{r}
+df_NWA<-load_obj(paste0(dirTables, "Neurons_sub_ClusterName_7.2_run1_cell_cluster_module_genes.csv.gz"))
+```
+
+load enrichment matrices
+
+```{r}
+
+## SEM versus WGCNA
+### SEM all versus WGCNA top
+#### t.test
+# mat_SEMall_WGCNAtop_t.test_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMall_WGCNAtop_1_mat_t.test_pval_genesetTests.txt", sep = "\t", header=T)
+# #### Wilcoxon
+mat_SEMall_WGCNAtop_wilcoxon_pval <- read.delim("/projects/jonatan/applied/18-mousebrain_7/tables/mb_GSA_SEMall_WGCNAtop_2_analyt_mat_wilcoxonPval_genesetTests.txt", sep = "\t", header=T)
+# #### GSEA
+# mat_SEMall_WGCNAtop_GSEA_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMall_WGCNAtop_1_mat_GSEAPval_genesetTests.txt",sep = "\t", header=T)
+# #mat_SEMall_WGCNAtop_GSEA_sscore  <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMall_WGCNAtop_1_mat_GSEAsscore_genesetTests.txt")
+# #### dot.product
+# mat_SEMall_WGCNAtop_dot.product_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMall_WGCNAtop_1_mat_dot.product.testPval_genesetTests.txt")
+# ### SEM top versus WGCNA top
+# #### Fisher
+# mat_SEMtop_WGCNAtop_fisher_pval<- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMtop150_WGCNAtop_1_mat_fisherPval_genesetTests.txt", sep = "\t", header=T)
+# 
+# ## WGCNA versus SEM
+# ### WGCNA all versus SEM top
+# #### t.test
+# mat_WGCNAall_SEMtop_t.test_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_WGCNAall_SEMtop150_1_mat_t.testPval_genesetTests.txt", sep = "\t", header=T)
+# ### wilcoxon
+# mat_WGCNAall_SEMtop_wilcoxon_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_WGCNAall_SEMtop150_1_mat_wilcoxonPval_genesetTests.txt", sep = "\t", header=T)
+# ### GSEA
+# mat_WGCNAall_SEMtop_GSEA_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_WGCNAall_SEMtop150_1_mat_GSEAPval_genesetTests.txt", sep = "\t", header=T)
+# #mat_WGCNAall_SEMtop_GSEA_sscore <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_WGCNAall_SEMtop150_1_mat_GSEAsscore_genesetTests.txt", sep = "\t", header=T)
+# ### dot.product
+# mat_WGCNAall_SEMtop_dot.product_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_WGCNAall_SEMtop150_1_mat_dot.product.testPval_genesetTests.txt", sep = "\t", header=T)
+# 
+# ### WGCNA all versus SEM all
+# #### dot.product
+# mat_SEMall_WGCNAall_dot.product_pval <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMall_WGCNAall_1_mat_dot.product.testPval_genesetTests.txt", sep = "\t", header=T)
+
+# mat_SEMtop_WGCNAtop_fisher_pvaltop150 <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMtop150_WGCNAtop_1_mat_fisherPval_genesetTests.txt", sep = "\t", header=T)
+# mat_SEMtop_WGCNAtop_fisher_pval0.5 <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMtop0.5_WGCNAtop_1_mat_fisherPval_genesetTests.txt", sep = "\t", header=T)
+# mat_SEMtop_WGCNAtop_fisher_pval0.75<- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMtop0.75_WGCNAtop_1_mat_fisherPval_genesetTests.txt", sep = "\t", header=T)
+# mat_SEMtop_WGCNAtop_fisher_pval0.9 <- read.delim("/projects/jonatan/mousebrain_7/tables/mb_GSA_SEMtop0.9_WGCNAtop_1_mat_fisherPval_genesetTests.txt", sep = "\t", header=T)
+```
+
+```{r}
+modules <- c("lavenderblush", "lightpink3")
+```
+
+#### Compare different enrichment metrics
+
+
+```{r}
+list_mat <- ls(pattern="mat_.*_pval") %>% lapply(., function(matName) eval(parse(text=matName)))
+names(list_mat) <-  ls(pattern="mat_.*_pval")
+```
+
+```{r}
+# TODO: confirm
+n_tests = ncelltypes #* length(modules)
+```
+
+```{r}
+
+for (module in modules){ 
+  
+  list_vec <- lapply(list_mat, function(mat_tmp) {
+    mat_tmp <- as.matrix(mat_tmp)
+    if (nrow(mat_tmp)<ncol(mat_tmp)) mat_tmp <- t(mat_tmp)
+    #mat_tmp[module,] %>% p.adjust(p = ., method = "fdr", n = n_tests) %>% log10 %>% '-'(.) -> vec_tmp
+    mat_tmp[module,] %>% log10 %>% '-'(.) -> vec_tmp 
+    
+    #mat_tmp[module,]  -> vec_tmp
+    names(vec_tmp) <- colnames(mat_tmp)
+    vec_tmp
+  })
+  #ls(pattern="mat_.*_pval") %>% gsub("mat_", "", .) %>% gsub("_pval", "qval", .) -> names(list_vec) 
+  ls(pattern="mat_.*_pval") %>% gsub("mat_", "", .) -> names(list_vec) 
+  
+  # create a dataset
+  
+  celltype <- rep(names(list_vec[[1]]), rep(length(list_vec),11))
+  
+  test <- rep(names(list_vec),11)
+  
+  list_vec %>% as.data.frame %>% as.matrix %>% t %>% as.numeric -> vec_vals
+  # matrix(data = unlist(list_vec), ncol=9) %>% t-> mat_vals
+  # vec_vals <- as.numeric(mat_vals)
+  df_data <- data.frame(celltype=celltype, test=test, value=vec_vals)
+  #df_data
+  
+  (p.val.threshold / n_tests) %>% log10(.) %>% '-'(.) -> cutoff
+  # Grouped
+  ggplot(df_data, aes(fill=test, y=value, x=celltype)) +
+    geom_bar(position="dodge", stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+    geom_hline(yintercept=cutoff, linetype="dashed", color = "red") 
+  ggsave(filename = paste0(dirPlots, prefixOut, "_",module ,"_modCelltypeEnrich_compare.pdf"), width=15, height=10)
+
+}
+```
+
+#### Plot module celltype specificity barplot 
+using selected enrichment metric
+
+
+```{r}
+mat_testUse <- mat_SEMall_WGCNAtop_wilcoxon_pval
+name <- "wilcoxon"
+
+#TODO confirm cutoff
+
+(p.val.threshold / n_tests) %>% log10(.) %>% '-'(.) -> cutoff
+```
+
+```{r}
+
+if (nrow(mat_testUse)<ncol(mat_testUse)) mat_testUse <- t(mat_testUse)
+mat_testUse_modules <- mat_testUse[modules,]
+#mat_testUse_modules %>% as.matrix %>% as.numeric %>% p.adjust(p = ., method = "fdr", n = n_tests) %>% log10 %>% '-'(.) -> vec_vals
+mat_testUse_modules %>% as.matrix %>% as.numeric %>% log10 %>% '-'(.) -> vec_vals
+
+celltype <- rep(colnames(mat_testUse_modules), rep(length(modules),11))
+vec_module <- rep(modules, 11)
+df_data1 <- data.frame(celltype=celltype, module=vec_module, value=vec_vals)
+df_data1
+
+# Grouped
+ggplot(df_data1, aes(fill=module, y=value, x=celltype)) +
+  geom_bar(position="dodge", stat="identity") + 
+  geom_hline(yintercept=cutoff, linetype="dashed", color = "red") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+saveMeta(savefnc = ggsave, filename = paste0(dirPlots, prefixOut, "_", paste0(modules, collapse="_"),"_", name, "_celltypeEnrich_barplot.pdf"), width=15, height=10)
+```
+
+module specificity barplots, split by module
+
+```{r}
+
+for (module in modules) {
+  df_data2 <- data.frame(celltype=colnames(mat_testUse_modules),
+                         module=rep(module, ncol(mat_testUse_modules)),
+                         value= mat_testUse[module,] %>% log10 %>% '-'(.) %>% as.numeric)
+  # Grouped
+  ggplot(df_data2, aes(fill=module, y=value, x=celltype)) +
+    geom_bar(position="dodge", stat="identity") + 
+    geom_hline(yintercept=cutoff, linetype="dashed", color = "red") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  saveMeta(savefnc = ggsave, filename = paste0(dirPlots, prefixOut, "_", module, "_", name, "_celltypeEnrich_barplot.pdf"), width=15, height=10)
+}
+
+```
+
