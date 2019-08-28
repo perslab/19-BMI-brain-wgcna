@@ -1,4 +1,4 @@
-# Title: Script to find robust WGCNA modules
+## Script to find WGCNA modules
 
 ######################################################################
 ############################## USAGE #################################
@@ -11,10 +11,15 @@
 # and https://gist.github.com/cheuerde/8fb9fd0dc8c0eca17c16#file-r_openblas-L64
 
 ######################################################################
-########################### OptParse #################################
+######################## INITIAL PACKAGES ############################
 ######################################################################
 
-suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library("here"))
+suppressPackageStartupMessages(library("optparse"))
+
+######################################################################
+########################### OptParse #################################
+######################################################################
 
 option_list <- list(
   
@@ -97,74 +102,6 @@ option_list <- list(
   make_option("--RAM_Gb_max", type="integer", default=250,
               help = "Upper limit on Gb RAM available. Taken into account when setting up parallel processes. [default %default]")
 )
-
-######################################################################
-############################## PACKAGES ##############################
-######################################################################
-
-# install and require packages using a function (allows for automation)
-ipak <- function(pkgs){
-  new.pkgs <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
-  if (length(new.pkgs)) {
-    sapply(new.pkgs, function(pkg) {
-      tryCatch({
-        install.packages(pkg, dependencies = TRUE)
-      }, warning = function(war) {
-        tryCatch({
-          source("https://bioconductor.org/biocLite.R")
-          biocLite(pkg, suppressUpdates = T)
-        }, error = function(err1) {
-          warning(paste0(pkg, " encountered the error: ", err1))
-          dependency <- gsub("\\W|ERROR: dependency | is not available for package.*", "", err)
-          ipak(dependency)
-        })
-      } ,
-      error = function(err)
-      {
-        dependency <- gsub("\\W|ERROR: dependency | is not available for package.*", "", err)
-        ipak(dependency)
-      })
-    })
-  }
-  suppressPackageStartupMessages(sapply(pkgs, require, character.only = TRUE))
-  failed <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
-  if (length(failed)>0) warning(paste0(paste0(failed, collapse = " "), " failed to install"))
-}
-
-# install and require packages
-
-ipak(c("dplyr", "Biobase", "Matrix","parallel", "reshape", "reshape2", "Seurat", "WGCNA"))
-message("Packages loaded")
-
-######################################################################
-########################## GET CURRENT DIR ###########################
-######################################################################
-
-LocationOfThisScript = function() # Function LocationOfThisScript returns the location of this .R script (may be needed to source other files in same dir)
-{
-  this.file = NULL
-  # This file may be 'sourced'
-  for (i in -(1:sys.nframe())) {
-    if (identical(sys.function(i), base::source)) this.file = (normalizePath(sys.frame(i)$ofile))
-  }
-  
-  if (!is.null(this.file)) return(dirname(this.file))
-  
-  # But it may also be called from the command line
-  cmd.args = commandArgs(trailingOnly = FALSE)
-  cmd.args.trailing = commandArgs(trailingOnly = TRUE)
-  cmd.args = cmd.args[seq.int(from=1, length.out=length(cmd.args) - length(cmd.args.trailing))]
-  res = gsub("^(?:--file=(.*)|.*)$", "\\1", cmd.args)
-  
-  # If multiple --file arguments are given, R uses the last one
-  res = tail(res[res != ""], 1)
-  if (0 < length(res)) return(dirname(res))
-  
-  # Both are not the case. Maybe we are in an R GUI?
-  return(NULL)
-}
-current.dir = paste0(LocationOfThisScript(), "/")
-#current.dir = "/projects/jonatan/pub-perslab/BMI-brain-rWGCNA/src/"
 
 ######################################################################
 ################### GET COMMAND LINE OPTIONS #########################
@@ -1527,38 +1464,6 @@ moduleEigengenes_uv <- function (expr, colors,
        allAEOK = allAEOK)
 }
 
-############################################################################################################################################################
-############################################################################################################################################################
-############################################################################################################################################################
-
-ipak <- function(pkgs){
-  new.pkgs <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
-  if (length(new.pkgs)) {
-    sapply(new.pkgs, function(pkg) {
-      tryCatch({
-        install.packages(pkg, dependencies = TRUE)
-      }, warning = function(war) {
-        tryCatch({
-          source("https://bioconductor.org/biocLite.R")
-          biocLite(pkg, suppressUpdates = T)
-        }, error = function(err1) {
-          warning(paste0(pkg, " encountered the error: ", err1))
-          dependency <- gsub("\\W|ERROR: dependency | is not available for package.*", "", err)
-          ipak(dependency)
-        })
-      } ,
-      error = function(err)
-      {
-        dependency <- gsub("\\W|ERROR: dependency | is not available for package.*", "", err)
-        ipak(dependency)
-      })
-    })
-  }
-  suppressPackageStartupMessages(sapply(pkgs, require, character.only = TRUE))
-  failed <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
-  if (length(failed)>0) warning(paste0(paste0(failed, collapse = " "), " failed to install"))
-}
-
 ######################################################################
 ########################### GENE REMAP ###############################
 ######################################################################
@@ -2260,25 +2165,40 @@ TOMDenom = "mean" # "min" gives the standard TOM described in Zhang and Horvath 
 
 # Entrezgene to ensemb_gene_id mapping file path for MAGMA
 
-mapping_hs_filepath = dir(pattern="gene_annotation_hsapiens.txt.gz", path = paste0(current.dir,"mapping/"), full.names = T) # columns: ensembl_gene_id, entrezgene, hgnc_symbol
+mapping_hs_filepath = dir(pattern="gene_annotation_hsapiens.txt.gz", path = here("data"), full.names = T) # columns: ensembl_gene_id, entrezgene, hgnc_symbol
 
 if (data_organism == "mmusculus") {
   # For mapping symbol to ensembl
-  mapping_mm_filepath = dir(pattern="Mus_musculus.GRCm38.90.gene_name_version2ensembl.txt.gz", path=paste0(current.dir,"mapping/"), full.names = T)
+  mapping_mm_filepath = dir(pattern="Mus_musculus.GRCm38.90.gene_name_version2ensembl.txt.gz", path=here("data"), full.names = T)
   # Synonyms
-  mapping_mm_synonyms_filepath = dir(pattern="Mus_musculus.gene_info_symbol2ensembl.gz", path= paste0(current.dir,"mapping/"), full.names=T)
+  mapping_mm_synonyms_filepath = dir(pattern="Mus_musculus.gene_info_symbol2ensembl.gz", path= here("data"), full.names=T)
   # Mouse to human ortholog mapping  
-  mapping_hs_mm_filepath =  dir(pattern="gene_annotation.hsapiens_mmusculus_unique_orthologs.GRCh37.ens_v91.txt.gz", path= paste0(current.dir,"mapping/"), full.names=T)
+  mapping_hs_mm_filepath =  dir(pattern="gene_annotation.hsapiens_mmusculus_unique_orthologs.GRCh37.ens_v91.txt.gz", path= here("data"), full.names=T)
   
 }
 
 set.seed(randomSeed)
 
-try(disableWGCNAThreads())
-
 options(stringsAsFactors = F)
 
 if (is.null(resume)) {
+  
+  ######################################################################
+  ############################## PACKAGES ##############################
+  ######################################################################
+  
+  # load packages into namespace
+  
+  suppressPackageStartupMessages(library("dplyr"))
+  suppressPackageStartupMessages(library("Biobase"))
+  suppressPackageStartupMessages(library("Matrix"))
+  suppressPackageStartupMessages(library("parallel"))
+  suppressPackageStartupMessages(library("reshape"))
+  suppressPackageStartupMessages(library("reshape2"))
+  #suppressPackageStartupMessages(library("hdf5r", lib.loc ="~/R/x86_64-pc-linux-gnu-library/"))
+  suppressPackageStartupMessages(library("Seurat"))
+  
+  message("Packages loaded")
   
   ######################################################################
   ############################ CHECK INPUT #############################
@@ -2823,11 +2743,15 @@ if (resume == "checkpoint_1") {
   # Free up DLLs
   invisible(R.utils::gcDLLs())
   
-  pkgs <- c("dplyr", "Biobase", "Matrix", "parallel", "reshape", "reshape2", "WGCNA")
+  suppressPackageStartupMessages(library("dplyr"))
+  suppressPackageStartupMessages(library("Biobase"))
+  suppressPackageStartupMessages(library("Matrix"))
+  suppressPackageStartupMessages(library("parallel"))
+  suppressPackageStartupMessages(library("reshape"))
+  suppressPackageStartupMessages(library("reshape2"))
+  suppressPackageStartupMessages(library("WGCNA"))
   
-  ipak(pkgs)
-  
-  disableWGCNAThreads()
+  try(disableWGCNAThreads())
   
   ######################################################################
   ####### PICK SOFT THRESHOLD POWER FOR ADJACENCY MATRIX ###############
@@ -2916,7 +2840,7 @@ if (resume == "checkpoint_1") {
     invisible(gc())
     
     fun <- function(datExpr,name) {
-      tryCatch({
+      # tryCatch({
         
         multiExpr <- bootstrap(datExpr=datExpr, 
                                nPermutations = TOMnReplicate,
@@ -2955,23 +2879,22 @@ if (resume == "checkpoint_1") {
                      verbose = verbose,
                      indent = indent)
         
-      }, error = function(err) {
-        adjacency = adjacency(datExpr=list_datExpr[[name]], 
-                              type=type, 
-                              power = list_sft[[name]]$Power, 
-                              corFnc = corFnc, 
-                              corOptions = corOptions)
-        
-        consTomDS = TOMsimilarity(adjMat=adjacency,
-                                  TOMType=TOMType,
-                                  TOMDenom=TOMDenom,
-                                  verbose=verbose,
-                                  indent = indent)
-        colnames(consTomDS) <- rownames(consTomDS) <- colnames(list_datExpr[[name]])
-        save(consTomDS, file=sprintf("%s%s_%s_%s_consensusTOM-block.1.RData", scratch_dir, data_prefix, run_prefix, name)) # Save TOM the way consensusTOM would have done
-      })
+      # }, error = function(err) {
+      #   adjacency = adjacency(datExpr=list_datExpr[[name]], 
+      #                         type=type, 
+      #                         power = list_sft[[name]]$Power, 
+      #                         corFnc = corFnc, 
+      #                         corOptions = corOptions)
+      #   
+      #   consTOMDS = TOMsimilarity(adjMat=adjacency,
+      #                             TOMType=TOMType,
+      #                             TOMDenom=TOMDenom,
+      #                             verbose=verbose,
+      #                             indent = indent)
+      #   colnames(consTOMDS) <- rownames(consTOMDS) <- colnames(list_datExpr[[name]])
+      #   save(consTOMDS, file=sprintf("%s%s_%s_%s_consensusTOM-block.1.RData", scratch_dir, data_prefix, run_prefix, name)) # Save TOM the way consensusTOM would have done
+      # })
     }
-    
     args <- list("datExpr"=list_datExpr, "name"=sNames_2)
     outfile = outfile = paste0(log_dir, data_prefix, "_", run_prefix, "_", "log_consensusTOM.txt")
     
@@ -2979,49 +2902,49 @@ if (resume == "checkpoint_1") {
     obj_size_Gb <- as.numeric(sum(sapply(ls(envir = .GlobalEnv), function(x) object.size(x=eval(parse(text=x)))))) / 1024^3
     n_cores <- min(max(sapply(args, length)), min(detectCores()%/%3, RAM_Gb_max %/% (obj_size_Gb + additional_Gb))-1)
     
-    safeParallel(fun=fun, 
-                 args=args,
-                 outfile=outfile,
-                 n_cores=n_cores,
-                 nPermutations=TOMnReplicate,
-                 replace=replace,
-                 fraction=fraction,
-                 randomSeed=randomSeed,
-                 checkMissingData = checkMissingData,
-                 maxBlockSize = maxBlockSize, 
-                 blockSizePenaltyPower = blockSizePenaltyPower, 
-                 randomSeed = randomSeed,
-                 corType = corType,
-                 corFnc = corFnc, 
-                 corOptions = corOptions,
-                 maxPOutliers = maxPOutliers,
-                 quickCor = quickCor,
-                 pearsonFallback = pearsonFallback,
-                 cosineCorrelation = cosineCorrelation,
-                 replaceMissingAdjacencies = replaceMissingAdjacencies,
-                 list_sft = list_sft,
-                 networkType = networkType,
-                 type = networkType,
-                 TOMType=TOMType,
-                 TOMDenom = TOMDenom,
-                 saveIndividualTOMs = saveIndividualTOMs,
-                 data_prefix=data_prefix, 
-                 run_prefix=run_prefix,
-                 networkCalibration = networkCalibration,
-                 sampleForCalibration = sampleForCalibration,
-                 sampleForCalibrationFactor = sampleForCalibrationFactor,
-                 getNetworkCalibrationSamples = getNetworkCalibrationSamples,
-                 consensusQuantile = consensusQuantile,
-                 useMean = useMean,
-                 saveConsensusTOMs = saveConsensusTOMs,
-                 returnTOMs = F,
-                 useDiskCache = T,
-                 cacheDir = scratch_dir,
-                 cacheBase = ".blockConsModsCache",
-                 verbose = verbose,
-                 indent = indent,
-                 list_datExpr=list_datExpr,
-                 scratch_dir = scratch_dir)
+    list_consensus <- safeParallel(fun=fun, 
+                   args=args,
+                   outfile=outfile,
+                   n_cores=n_cores,
+                   nPermutations=TOMnReplicate,
+                   replace=replace,
+                   fraction=fraction,
+                   randomSeed=randomSeed,
+                   checkMissingData = checkMissingData,
+                   maxBlockSize = maxBlockSize, 
+                   blockSizePenaltyPower = blockSizePenaltyPower, 
+                   randomSeed = randomSeed,
+                   corType = corType,
+                   corFnc = corFnc, 
+                   corOptions = corOptions,
+                   maxPOutliers = maxPOutliers,
+                   quickCor = quickCor,
+                   pearsonFallback = pearsonFallback,
+                   cosineCorrelation = cosineCorrelation,
+                   replaceMissingAdjacencies = replaceMissingAdjacencies,
+                   list_sft = list_sft,
+                   networkType = networkType,
+                   type = networkType,
+                   TOMType=TOMType,
+                   TOMDenom = TOMDenom,
+                   saveIndividualTOMs = saveIndividualTOMs,
+                   data_prefix=data_prefix, 
+                   run_prefix=run_prefix,
+                   networkCalibration = networkCalibration,
+                   sampleForCalibration = sampleForCalibration,
+                   sampleForCalibrationFactor = sampleForCalibrationFactor,
+                   getNetworkCalibrationSamples = getNetworkCalibrationSamples,
+                   consensusQuantile = consensusQuantile,
+                   useMean = useMean,
+                   saveConsensusTOMs = saveConsensusTOMs,
+                   returnTOMs = F,
+                   useDiskCache = T,
+                   cacheDir = scratch_dir,
+                   cacheBase = ".blockConsModsCache",
+                   verbose = verbose,
+                   indent = indent,
+                   list_datExpr=list_datExpr,
+                   scratch_dir = scratch_dir)
     
   } else if (TOMnReplicate==0) {
     
@@ -3039,18 +2962,17 @@ if (resume == "checkpoint_1") {
                             power = list_sft[[name]]$Power, 
                             corFnc = corFnc, 
                             corOptions = corOptions)
-      consTomDS = TOMsimilarity(adjMat=adjacency,
+      consTOMDS = TOMsimilarity(adjMat=adjacency,
                                 TOMType=TOMType,
                                 TOMDenom=TOMDenom,
                                 verbose=verbose,
                                 indent = indent)
-      colnames(consTomDS) <- rownames(consTomDS) <- colnames(datExpr)
-      save(consTomDS, file=sprintf("%s%s_%s_%s_consensusTOM-block.1.RData", scratch_dir, data_prefix, run_prefix, name)) # Save TOM the way consensusTOM would have done
-      
+      colnames(consTOMDS) <- rownames(consTOMDS) <- colnames(datExpr)
+      save(consTOMDS, file=sprintf("%s%s_%s_%s_consensusTOM-block.1.RData", scratch_dir, data_prefix, run_prefix, name)) # Save TOM the way consensusTOM would have done
     }
     args = list("datExpr"=list_datExpr, "name"=sNames_2)
-    safeParallel(fun=fun, args=args, outfile=outfile, type=type, list_sft=list_sft, corFnc=corFnc, corOptions=corOptions, TOMType=TOMType, TOMDenom=TOMDenom, verbose=verbose, indent=indent, data_prefix=data_prefix, run_prefix=run_prefix, scratch_dir=scratch_dir)
     
+    safeParallel(fun=fun, args=args, outfile=outfile, type=type, list_sft=list_sft, corFnc=corFnc, corOptions=corOptions, TOMType=TOMType, TOMDenom=TOMDenom, verbose=verbose, indent=indent, data_prefix=data_prefix, run_prefix=run_prefix, scratch_dir=scratch_dir)
   }
   
   #rm(list_datExpr)
@@ -3071,12 +2993,15 @@ if (resume == "checkpoint_1") {
                               load_obj=load_obj)
   
   # Filter datExpr to retain genes that were kept by goodSamplesGenesMS, called by consensusTOM 
-  fun = function(datExpr, consTOM) {
-    datExpr[,match(colnames(consTOM), colnames(datExpr))]
+  if (TOMnReplicate > 1) { 
+    fun = function(datExpr, consensus) {
+      datExpr[,consensus$goodSamplesAndGenes$goodGenes]
+    }
+    args=list(datExpr=list_datExpr, consensus=list_consensus)
+    list_datExpr_gg <- safeParallel(fun=fun, args=args)
+  } else {
+    list_datExpr_gg <- list_datExpr
   }
-  args=list(datExpr=list_datExpr, consTOM=list_consTOM)
-  list_datExpr_gg <- safeParallel(fun=fun, args=args)
-  
   rm(list_datExpr)
   
   # Convert proximity TOMs to distance matrices 
@@ -3127,10 +3052,14 @@ if (resume == "checkpoint_2") {
   # Free up DLLs
   invisible(R.utils::gcDLLs())
   
-  pkgs <- c("dplyr", "Biobase", "Matrix", "parallel", "reshape", "reshape2", "WGCNA")
-  
-  ipak(pkgs)
-  
+  suppressPackageStartupMessages(library("dplyr"))
+  suppressPackageStartupMessages(library("Biobase"))
+  suppressPackageStartupMessages(library("Matrix"))
+  suppressPackageStartupMessages(library("parallel"))
+  suppressPackageStartupMessages(library("reshape"))
+  suppressPackageStartupMessages(library("reshape2"))
+  suppressPackageStartupMessages(library("WGCNA"))
+
   ######################################################################
   ##################### LOAD AND FILTER DISSTOMS #######################
   ######################################################################
@@ -3893,9 +3822,13 @@ if (resume == "checkpoint_3") {
   invisible(R.utils::gcDLLs())
   # Load packages
   
-  pkgs <- c("STRINGdb", "dplyr", "Biobase", "Matrix", "parallel", "reshape", "reshape2")
-  
-  ipak(pkgs)
+  suppressPackageStartupMessages(library("dplyr"))
+  suppressPackageStartupMessages(library("Biobase"))
+  suppressPackageStartupMessages(library("Matrix"))
+  suppressPackageStartupMessages(library("parallel"))
+  suppressPackageStartupMessages(library("reshape"))
+  suppressPackageStartupMessages(library("reshape2"))
+  suppressPackageStartupMessages(library("STRINGdb"))
   
   ######################################################################
   #################### CHECK MODULES FOR PPI ENRICHMENT ################
@@ -3974,8 +3907,15 @@ if (resume == "checkpoint_4") {
   ######################### LOAD PACKAGES ##############################
   ######################################################################
   
-  pkgs <- c("dplyr", "Biobase", "Matrix", "parallel", "reshape", "reshape2", "WGCNA", "liger", "boot")
-  ipak(pkgs)
+  suppressPackageStartupMessages(library("dplyr"))
+  suppressPackageStartupMessages(library("Biobase"))
+  suppressPackageStartupMessages(library("Matrix"))
+  suppressPackageStartupMessages(library("parallel"))
+  suppressPackageStartupMessages(library("reshape"))
+  suppressPackageStartupMessages(library("reshape2"))
+  suppressPackageStartupMessages(library("WGCNA"))
+  if (!is.null(list_genesets_path)) suppressPackageStartupMessages(library("liger"))
+  if (!is.null(magma_gwas_dir)) suppressPackageStartupMessages(library("boot"))
   
   ######################################################################
   ################ ORDER PARAMETER SETS BY PPI ENRICHMENT ##############
@@ -4880,9 +4820,13 @@ if (resume == "checkpoint_5") {
   
   invisible(R.utils::gcDLLs())
   
-  pkgs <- c("dplyr", "Biobase", "Matrix", "parallel", "reshape", "reshape2", "readr")
-  
-  ipak(pkgs)
+  suppressPackageStartupMessages(library("dplyr"))
+  suppressPackageStartupMessages(library("Biobase"))
+  suppressPackageStartupMessages(library("Matrix"))
+  suppressPackageStartupMessages(library("parallel"))
+  suppressPackageStartupMessages(library("reshape"))
+  suppressPackageStartupMessages(library("reshape2"))
+  suppressPackageStartupMessages(library("readr"))
   
   ##########################################################################
   ######### PREPARE GENES LISTS AND DATAFRAME WITH MODULES, GENES ##########
