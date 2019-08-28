@@ -336,9 +336,9 @@
     },
     "boot": {
       "Package": "boot",
-      "Version": "1.3-22",
+      "Version": "1.3-23",
       "Source": "CRAN",
-      "Hash": "261c944b8d3fa65d0240979241dd66f4"
+      "Hash": "9ae266d4f489f83c3dd8f1a53a968adf"
     },
     "caTools": {
       "Package": "caTools",
