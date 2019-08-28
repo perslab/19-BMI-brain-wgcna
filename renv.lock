@@ -1090,12 +1090,6 @@
       "Source": "CRAN",
       "Hash": "e48086a0605a981e1deb719711d4be63"
     },
-    "rmarkdown": {
-      "Package": "rmarkdown",
-      "Version": "1.15",
-      "Source": "CRAN",
-      "Hash": "ff3dc5cbe968ebcc26c68169b066245a"
-    },
     "robust": {
       "Package": "robust",
       "Version": "0.4-18.1",
@@ -1231,16 +1225,6 @@
       "Version": "0.2.5",
       "Source": "CRAN",
       "Hash": "66c1a6de7f98266b76503698f2ca111d"
-    },
-    "tinytex": {
-      "Package": "tinytex",
-      "Version": "0.15",
-      "Source": "CRAN",
-      "RemoteType": "standard",
-      "RemoteRef": "tinytex",
-      "RemoteRepos": "https://mirrors.dotsrc.org/cran",
-      "RemoteSha": "0.15",
-      "Hash": "eec39be3fabc94b2795bb0f2734fca12"
     },
     "tsne": {
       "Package": "tsne",
