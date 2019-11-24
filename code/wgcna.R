@@ -1,14 +1,6 @@
-## Script to find WGCNA modules
-
-######################################################################
-############################## USAGE #################################
-#######################o###############################################
-
-# run from command line
-# run on R 3.4.3
-# recommended: Use R OpenBLAS for faster linear algebra
-# see https://stackoverflow.com/questions/26897335/how-can-i-load-a-specific-version-of-r-in-linux 
-# and https://gist.github.com/cheuerde/8fb9fd0dc8c0eca17c16#file-r_openblas-L64
+#' @title Single cell WGCNA modules
+#' @author Jon Thompson rkm916 at ku dot dk
+#' @importFrom Seurat 2.3.3
 
 ######################################################################
 ######################## INITIAL PACKAGES ############################
@@ -23,8 +15,10 @@ suppressPackageStartupMessages(library("optparse"))
 
 option_list <- list(
   
-  make_option("--seurat_path", type="character",
-              help = "Provide full path to input file in .RData or .RDS format, optionally gzip compressed, containing Seurat object with raw RNA counts in the @raw.data slot "),
+  make_option("--raw.data_path", type="character",
+              help = "Provide full path to gene * sample expression matrix in delimited file format (may be compressed). First column should be 'gene'."),
+  make_option("--meta.data_path", type="character",
+              help = "Provide full path to sample * variable metadata table in deliminted file format (may be compressed). First column should be sample names."),
   make_option("--project_dir", type="character", default=NULL,
               help = "Optional. Provide project directory. Must have subdirs RObjects, plots, tables. If not provided, assumed to be dir one level up from input data dir. [default %default]"),
   make_option("--scratch_dir", type="character", default="/scratch/tmp-wgcna/",
@@ -39,16 +33,12 @@ option_list <- list(
               help = "Autosave session images at regular intervals to resume later? [default %default]."),
   make_option("--resume", type="character", default=NULL,
               help = "Resume from a checkpoint? Must have same path and data_prefix as provided. Options are 'checkpoint_1' - '5' [default %default]"),
-  make_option("--quit_session", type="character", default=NULL,
-              help = "Quit after saving session image at a checkpoint? Options are 'checkpoint_1' - 'checkpoint_5'"),
-  make_option("--metadata_subset_col", type="character", default=NULL,
-              help = "Specify a seurat@meta.data$... column to use for subsetting the Seurat object. If NULL uses the @ident slot. [default %default]"),
+  make_option("--metadata_subset_col", type="character",
+              help = "Specify a seurat@meta.data$... column to use for subsetting the data."),
   make_option("--metadata_corr_col", type="character", default='NULL',
               help = "Specify seurat_obj@meta.data$... column(s) for which to compute correlations with gene modules. Takes a character with a vector in single (double) quotes of seurat_obj@meta.data column names in double (single) quotes, without whitspace, e.g. 'nUMI' or 'c('Sex','Age')'. For factor or character metadata, each levels is analysed as a dummy variable, so exercise caution.  [default %default]"),
   make_option("--metadata_corr_filter_vals", type="character", default='NULL',
               help = "Specify one or more values within the seurat@meta.data$... column(s). Retain only modules which are significantly (anti-) correlated (at present, there is no threshold value for the correlation). Takes a character with a vector of meta.data column names without whitespace, e.g. 'Female' or 'c('fasted', 'HFD')'. Case-insensitive [default %default]."),
-  make_option("--use_imputed", type="logical", default=F,
-              help="Use data in the obj@imputed slot for the computations to replace the @raw.data slot? If the @imputed slot is empty, will revert to [default %default]"),
   make_option("--regress_out", type="character", default='c("nUMI", "percent.mito", "percent.ribo")',
               help="Provide arguments to Seurat's ScaleData function in the form of a vector in quotes, defaults to c('nUMI', 'percent.mito', 'percent.ribo') [default %default]"),
   make_option("--min.cells", type="integer", default=20L,
@@ -57,8 +47,6 @@ option_list <- list(
               help="What is the minimum number of cells in a subset to continue? Integer, [default %default]."),
   make_option("--map_genes_to_ensembl", type="logical", default=TRUE,
               help="Required if applying MAGMA gene set test [default %default]."),
-  make_option("--genes_remove_dir", type="character", default=NULL,
-              help="Directory with genesets to remove at the beginning of the analysis, e.g. mitochrondrial or ribosomal genes, in ensembl format. Takes .gz, .tab, .csv and .txt (delim) files. [default %default]"), 
   make_option("--genes_use", type="character", default="PCA",
               help="One of 'all', 'var.genes' or 'PCA' for genes with significant loading on at least one significant PC. 'All' is not recommended. [default %default]"), 
   make_option("--pca_genes", type="character", default="var.genes",
@@ -130,7 +118,9 @@ if (!is.null(resume)) {
 
 opt <- parse_args(OptionParser(option_list=option_list))
 
-seurat_path <- opt$seurat_path 
+raw.data_path <- opt$raw.data_path 
+
+meta.data_path <- opt$meta.data_path 
 
 project_dir <- opt$project_dir
 
@@ -138,8 +128,6 @@ project_dir <- opt$project_dir
 data_type = opt$data_type
 
 autosave <- opt$autosave
-
-quit_session <- opt$quit_session
 
 metadata_subset_col <- opt$metadata_subset_col
 
@@ -149,8 +137,6 @@ if (!is.null(metadata_corr_col)) metadata_corr_col <- eval(parse(text=metadata_c
 metadata_corr_filter_vals <- opt$metadata_corr_filter_vals
 if (!is.null(metadata_corr_filter_vals)) metadata_corr_filter_vals <- eval(parse(text=metadata_corr_filter_vals))
 
-use_imputed <- opt$use_imputed
-
 regress_out <- opt$regress_out
 if (!is.null(regress_out)) regress_out <- eval(parse(text=regress_out))
 
@@ -159,8 +145,6 @@ min.cells <- opt$min.cells
 minCellClusterSize <- opt$minCellClusterSize
 
 map_genes_to_ensembl <- opt$map_genes_to_ensembl
-
-genes_remove_dir <- opt$genes_remove_dir
 
 genes_use <- opt$genes_use
 
@@ -793,57 +777,6 @@ factorToIndicator <- function(vec) {
   colnames(mat) <- unique(vec)
   return(mat)
 }
-############################################################################################################################################################
-############################################################################################################################################################
-############################################################################################################################################################
-
-wrapSubset <- function(obj, ident, do.scale=T, do.center=T) {
-  # @Status:  OK
-  # @Usage:   Pseudo-wrapper for Seurat's SubsetData, ScaleData, FindVariableGenes and runPCA functions
-  #           Main purpose: Allows for parallelised subsetting by putting all the steps into one function
-  # @args: 
-  #           obj: Seurat object from which to take a subset
-  #           ident: Vector of characters within ident column on which to subset 
-  #           do.scale: handled using ScaleData() rather than SubsetData()
-  #           do.center: handled using ScaleData() rather than SubsetData()
-  # @return: 
-  #           Seurat subset object 
-  # @depends: Seurat
-  # @author:  Jonatan Thompson jjt3f2188@gmail.com
-  # @date:    180326
-  
-  # Subset the data based on new identity; scale and center the data, restore the old identity
-  obj_sub = SubsetData(obj, 
-                       ident.use=ident, 
-                       do.scale=F, 
-                       do.center=F, 
-                       subset.raw = T)
-  
-  obj_sub <- ScaleData(object = obj_sub, 
-                       genes.use = NULL, # default: genes.use = all genes in @data
-                       vars.to.regress = c("nUMI", "percent.mito", "percent.ribo"), 
-                       model.use="linear", 
-                       do.scale=do.scale, 
-                       do.center=do.center) 
-  
-  obj_sub <- FindVariableGenes(object = obj_sub, 
-                               mean.function = ExpMean, 
-                               dispersion.function = LogVMR, 
-                               x.low.cutoff = 0.0125, 
-                               x.high.cutoff = 3, 
-                               y.cutoff = 0.5, 
-                               do.plot=F)
-  
-  obj_sub <- RunPCA(object = obj_sub, 
-                    pc.genes = obj_sub@var.genes, 
-                    pcs.compute = nPC_seurat, 
-                    do.print = F)#, pcs.print = 1:5, genes.print = 5)
-  
-  
-  return(obj_sub)
-  
-}
-
 ############################################################################################################################################################
 ############################################################################################################################################################
 ############################################################################################################################################################
@@ -1701,13 +1634,13 @@ safeParallel = function(fun, args, simplify=F, MARGIN=NULL, n_cores=NULL, Gb_max
 ############################## CONSTANTS #############################
 ######################################################################
 
-if (!file.exists(seurat_path) & is.null(resume)) stop("Input data path not found and no previous session to resume")
+if (!file.exists(raw.data_path) & is.null(resume)) stop("Input data path not found and no previous session to resume")
 
-# if no output directory provided, use the dir one level above that of the input file.
+# if no output directory provided, use here to infer 
 
 if (is.null(project_dir)) {
-  pos <- tail(gregexpr("/", seurat_path)[[1]],2)[1]
-  project_dir = substr(seurat_path, 1, pos)
+  #pos <- tail(gregexpr("/", raw.data_path)[[1]],2)[1]
+  project_dir = here()#substr(raw.data_path, 1, pos)
 }
 
 # if specified output directory doesn't exist, create it 
@@ -2189,6 +2122,7 @@ if (is.null(resume)) {
   
   # load packages into namespace
   
+  suppressPackageStartupMessages(library("data.table"))
   suppressPackageStartupMessages(library("dplyr"))
   suppressPackageStartupMessages(library("Biobase"))
   suppressPackageStartupMessages(library("Matrix"))
@@ -2236,13 +2170,7 @@ if (is.null(resume)) {
   
   if (! (TOMnReplicate >= 0)) stop("TOMnReplicate must be non-negative")
   
-  if (!is.null(genes_remove_dir)) {
-    if (!file.exists(genes_remove_dir)) {
-      warning("genes_remove_dir not found")
-      genes_remove_dir <- NULL
-    } 
-  }
-  
+
   if (!map_genes_to_ensembl) {
     if (!is.null(magma_gwas_dir)) {
       magma_gwas_dir <- gwas_filter_traits<-NULL
@@ -2260,54 +2188,32 @@ if (is.null(resume)) {
   path_cellClusters_dropped_log <- paste0(log_dir, data_prefix, "_", run_prefix, "_cellClusters_dropped.txt")
   
   ######################################################################
-  ################# LOAD AND SUBSET SEURAT OBJECT ######################
+  ################# LOAD DATA AND CREATE SEURAT OBJECT ######################
   ######################################################################
   
-  message("Loading seurat object..")
+  message("Loading expression data..")
   
-  seurat_obj <- load_obj(f=seurat_path)
+  dt_raw <- fread(raw.data_path)
+  dt_metadata <- fread(meta.data_path)
   
-  ######################################################################
-  ######################## USE IMPUTED DATA? ###########################
-  ######################################################################
+  dt_raw[,-1] %>% as.matrix %>% Matrix(., sparse = TRUE) -> spMat_raw
   
-  # Use imputed data if user opted to do so 
-  if (is.null(seurat_obj@imputed) | any(dim(seurat_obj@imputed)) == FALSE) use_imputed <- F
-  if (use_imputed==T) seurat_obj@raw.data <- seurat_obj@imputed
+  rownames(spMat_raw) <- dt_raw[[1]]
+  rm(dt_raw)
   
-  ######################################################################
-  #################### FILTER OUT GENES IN genes_remove_dir ############
-  ######################################################################
+  df_metadata <- as.data.frame(dt_metadata)
   
-  if (!is.null(genes_remove_dir)) {
+  rownames(df_metadata) <- colnames(spMat_raw)
+  
+  seurat_obj <- CreateSeuratObject(raw.data = spMat_raw, 
+                                   project=data_prefix, 
+                                   meta.data = df_metadata)
     
-    genes_remove_paths <- dir(genes_remove_dir, pattern = "\\.csv|\\.tab|\\.txt", full.names = T)
-    
-    if (length(genes_remove_paths) > 0) {
-      
-      remove_idx_all <- rep(FALSE, times = nrow(seurat_obj@raw.data))
-      
-      for (path in genes_remove_paths) {
-        geneset <- NULL
-        geneset <- load_obj(path)
-        if (!is.null(geneset)) {
-          remove_idx <- rownames(seurat_obj@raw.data) %in% geneset
-          remove_idx_all <- remove_idx | remove_idx_all 
-        }
-      }
-    }
-    seurat_obj@raw.data <- seurat_obj@raw.data[!remove_idx,]
-  }
-  
   ######################################################################
   #################### SET SEURAT IDENT AND SUBSET NAMES ###############
   ######################################################################
   
-  # Set seurat object ident
-  if (!is.null(metadata_subset_col)) {
-    seurat_obj <- SetAllIdent(object = seurat_obj,id = metadata_subset_col)
-  }
-  
+  seurat_obj <- SetAllIdent(object = seurat_obj,id = metadata_subset_col)
   ident <- seurat_obj@ident
   sNames_0 <- names(table(seurat_obj@ident))
   
@@ -2345,11 +2251,13 @@ if (is.null(resume)) {
           
           # Step 1: direct mapping
           mapping_direct = read.table(gzfile(mapping_mm_filepath),sep="\t",header=T, stringsAsFactors = F)
-          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(row.names(seurat_obj@raw.data)), toupper(mapping_direct$gene_name_optimal)) ])
+          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(gsub("-|_", ".", row.names(seurat_obj@raw.data))), 
+                                                                                                                      toupper(gsub("-|_", ".", mapping_direct$gene_name_optimal))) ])
           
           # Step 2: map remaining using synonyms
           mapping_synonyms = read.delim(gzfile(mapping_mm_synonyms_filepath),sep="\t",header=T, stringsAsFactors = F)
-          mapping$ensembl[ which(is.na(mapping$ensembl)) ] = mapping_synonyms$ensembl[ match( toupper(mapping$symbol[which(is.na(mapping$ensembl)) ]) , toupper(mapping_synonyms$symbol)) ]
+          mapping$ensembl[ which(is.na(mapping$ensembl)) ] = mapping_synonyms$ensembl[ match( toupper(gsub("-|_", ".", mapping$symbol[which(is.na(mapping$ensembl)) ])) , 
+                                                                                              toupper(gsub("-|_", ".", mapping_synonyms$symbol))) ]
           rm(mapping_direct, mapping_synonyms)
           # save mapping file for reference and later use
           write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2357,8 +2265,10 @@ if (is.null(resume)) {
         } else if (data_organism == "hsapiens") {
           
           mapping_direct = read.csv(gzfile(mapping_hs_filepath),sep="\t",header=T, stringsAsFactors = F) # columns: ensembl_gene_id, entrezgene, hgnc_symbol
+          mapping_direct$hgnc_symbol <- gsub("-|_", ".", mapping_direct$hgnc_symbol)
           # Step 1: direct mapping
-          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(row.names(seurat_obj@raw.data)), toupper(mapping_direct$hgnc_symbol)) ])
+          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(gsub("-|_", ".", row.names(seurat_obj@raw.data))), 
+                                                                                                                      toupper(gsub("-|_", ".", mapping_direct$hgnc_symbol))) ])
           rm(mapping_direct)
           # save mapping file for reference and later use
           write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2637,7 +2547,7 @@ if (is.null(resume)) {
         RunPCA(object = seurat_obj,
                pc.genes = if (pca_genes == 'all') rownames(seurat_obj@data) else if (pca_genes == "var.genes") seurat_obj@var.genes,
                pcs.compute = min(nPC_seurat, min(if (pca_genes == 'all') nrow(seurat_obj@data) else length(seurat_obj@var.genes) %/% 2, ncol(seurat_obj@data) %/% 2)),
-               use.imputed = F, # if use_imputed=T the @imputed slot has been copied to @data
+               use.imputed = F, 
                weight.by.var = F,
                do.print = F,
                seed.use = randomSeed,
@@ -2651,7 +2561,7 @@ if (is.null(resume)) {
             RunPCA(object = seurat_obj,
                    pc.genes = seurat_obj@var.genes,
                    pcs.compute = min(nPC_seurat, min(length(seurat_obj@var.genes) %/% 2, ncol(seurat_obj@data) %/% 2))%/%2,
-                   use.imputed = F, # if use_imputed=T the @imputed slot has been copied to @data
+                   use.imputed = F, 
                    weight.by.var = F,
                    do.print = F,
                    seed.use = randomSeed,
@@ -2727,7 +2637,6 @@ if (is.null(resume)) {
   # Save or load session image 
   resume = "checkpoint_1"
   if (autosave) save.image(file=sprintf("%s%s_%s_checkpoint_1_image.RData.gz", scratch_dir, data_prefix, run_prefix), compress = "gzip")
-  if (!is.null(quit_session)) if (quit_session=="checkpoint_1") quit(save="no")
   
 } 
 
@@ -3039,7 +2948,7 @@ if (resume == "checkpoint_1") {
   
   resume="checkpoint_2"
   if (autosave) save.image( file=sprintf("%s%s_%s_checkpoint_2_image.RData.gz", scratch_dir, data_prefix, run_prefix), compress = "gzip")
-  if (!is.null(quit_session)) if (quit_session=="checkpoint_2") quit(save="no")
+  
   
 } 
 
@@ -3484,9 +3393,11 @@ if (resume == "checkpoint_2") {
           tryCatch({
             if (length(unique(colors))>1){
               vec_t <- ifelse(colors!="grey", (pkMs*sqrt(length(pkMs)-2))/sqrt(1-pkMs^2), 0) # compute t.stats, for a vector of rho
-              vec_p.val <- ifelse(colors!="grey", stats::pt(q=vec_t,  
-                                                            lower.tail = F, 
-                                                            df = length(pkMs)-2), 1) # compute p.values. We are genuinely only interested in upper tail 
+              vec_p.val <- ifelse(colors!="grey", 
+                                  stats::pt(q=abs(vec_t),  
+                                  lower.tail = F, 
+                                  df = length(pkMs)-2) + stats::pt(q=-(abs(vec_t)),  lower.tail = T, df = length(pkMs)-2), 1) # compute p.values. We are using both tails
+          
               vec_q.val <- p.adjust(p = vec_p.val, method = "fdr")
               vec_idx_signif <- vec_q.val < pvalThreshold # compute boolean significance vector. Set "grey" to TRUE so we don't count them
               vec_idx_signif[colors=="grey"] <- TRUE
@@ -3563,7 +3474,7 @@ if (resume == "checkpoint_2") {
               
               for (color in names(table(colors))[!grepl("^grey$",names(table(colors)))]) {
                 vec_p.val[colors==color] <- apply(X = datExpr[,colors==color], MARGIN = 2, FUN = function(datExpr_col) cor.test(datExpr_col, embed_mat[, color,drop=F], 
-                                                                                                                                alternative = "greater", 
+                                                                                                                                alternative = "two.sided", 
                                                                                                                                 method = "pearson", 
                                                                                                                                 conf.level = 1-pvalThreshold)$p.value)
               }
@@ -3808,7 +3719,7 @@ if (resume == "checkpoint_2") {
   resume = "checkpoint_3"
   message("Reached checkpoint 3, saving session image")
   if (autosave) save.image( file=sprintf("%s%s_%s_checkpoint_3_image.RData.gz", scratch_dir, data_prefix, run_prefix), compress = "gzip")
-  if (!is.null(quit_session)) if (quit_session=="checkpoint_3") quit(save="no")
+
 } 
 
 if (resume == "checkpoint_3") {
@@ -3897,7 +3808,7 @@ if (resume == "checkpoint_3") {
   resume = "checkpoint_4"
   message("Reached checkpoint 4, saving session image")
   if (autosave) save.image( file=sprintf("%s%s_%s_checkpoint_4_image.RData.gz", scratch_dir, data_prefix, run_prefix), compress = "gzip")
-  if (!is.null(quit_session)) if (quit_session=="checkpoint_4") quit(save="no")
+
   
 } 
 
@@ -4809,7 +4720,7 @@ if (resume == "checkpoint_4") {
   resume = "checkpoint_5"
   message("Reached checkpoint 5, saving session image")
   if (autosave) save.image( file=sprintf("%s%s_%s_checkpoint_5_image.RData.gz", scratch_dir, data_prefix, run_prefix), compress = "gzip")
-  if (!is.null(quit_session)) if (quit_session=="checkpoint_5") quit(save="no")
+  
 } 
 
 if (resume == "checkpoint_5") {
