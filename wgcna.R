@@ -2490,7 +2490,7 @@ if (is.null(resume)) {
   
   
   # Filter
-  idx_cellcluster_ok <- sapply(subsets, function(subset) {dim(subset@raw.data)[1]!=0}, simplify=T) 
+  idx_cellcluster_ok <- sapply(subsets, function(subset) {dim(subset@raw.data)[1]!=0}, simplify=T) %>% unlist
   
   if (!all(idx_cellcluster_ok)) {
     log_entry <-paste0(sNames_1[!idx_cellcluster_ok], ": had no genes left after filtering out genes expressed in fewer than ", min.cells, " cells, therefore dropped")
@@ -3104,7 +3104,7 @@ if (resume == "checkpoint_2") {
   names(list_list_cutree) <- names(list_list_comb) <- names(list_list_plot_label) <- sNames_3
   
   # Filter at the cell cluster level
-  idx_cellcluster_ok <- sapply(list_list_cutree, function(x) length(x)>0)
+  idx_cellcluster_ok <- sapply(list_list_cutree, function(x) length(x)>0, simplify = T) %>% unlist
   
   if (!all(idx_cellcluster_ok)) {
     log_entry <-paste0(sNames_3[!idx_cellcluster_ok], " : cutreeHybrid failed, removed from analysis")
