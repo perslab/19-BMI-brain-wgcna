@@ -2209,6 +2209,8 @@ if (is.null(resume)) {
   
   df_metadata <- as.data.frame(dt_metadata)
   
+  rownames(df_metadata) <- dt_metadata$CellID
+    
   df_metadata <- df_metadata[match(colnames(spMat_raw), rownames(df_metadata)),]
   
   seurat_obj <- CreateSeuratObject(raw.data = spMat_raw, 
@@ -3679,7 +3681,7 @@ if (resume == "checkpoint_2") {
   list_colors_matched=list_list_colors_matched, 
   SIMPLIFY=F)
   
-  idx_cellcluster_ok <- sapply(list_logical_params_ok, any, simplify = T)
+  idx_cellcluster_ok <- sapply(list_logical_params_ok, any, simplify = T) %>% unlist
   
   # First, for each run, remove results of any parametrisation for which all the genes were assigned to grey
   # If for a subset all parameters gave only grey modules, take it out of the top level list.
