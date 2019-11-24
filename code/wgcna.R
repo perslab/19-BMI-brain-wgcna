@@ -35,6 +35,8 @@ option_list <- list(
               help = "Resume from a checkpoint? Must have same path and data_prefix as provided. Options are 'checkpoint_1' - '5' [default %default]"),
   make_option("--metadata_subset_col", type="character",
               help = "Specify a seurat@meta.data$... column to use for subsetting the data."),
+  make_option("--vec_subset_idents", type="character", default = NULL,
+              help = "Quoted character vector of identity classes to use for the analysis, e.g. ''c('oligos', 'microglia')'' [default %default]"),
   make_option("--metadata_corr_col", type="character", default='NULL',
               help = "Specify seurat_obj@meta.data$... column(s) for which to compute correlations with gene modules. Takes a character with a vector in single (double) quotes of seurat_obj@meta.data column names in double (single) quotes, without whitspace, e.g. 'nUMI' or 'c('Sex','Age')'. For factor or character metadata, each levels is analysed as a dummy variable, so exercise caution.  [default %default]"),
   make_option("--metadata_corr_filter_vals", type="character", default='NULL',
@@ -130,6 +132,9 @@ data_type = opt$data_type
 autosave <- opt$autosave
 
 metadata_subset_col <- opt$metadata_subset_col
+
+vec_subset_idents <- opt$vec_subset_idents
+if (!is.null(vec_subset_idents)) vec_subset_idents <- eval(parse(text=vec_subset_idents))
 
 metadata_corr_col <- opt$metadata_corr_col
 if (!is.null(metadata_corr_col)) metadata_corr_col <- eval(parse(text=metadata_corr_col))
@@ -2208,15 +2213,29 @@ if (is.null(resume)) {
   seurat_obj <- CreateSeuratObject(raw.data = spMat_raw, 
                                    project=data_prefix, 
                                    meta.data = df_metadata)
-    
+  
   ######################################################################
   #################### SET SEURAT IDENT AND SUBSET NAMES ###############
   ######################################################################
   
   seurat_obj <- SetAllIdent(object = seurat_obj,id = metadata_subset_col)
   ident <- seurat_obj@ident
-  sNames_0 <- names(table(seurat_obj@ident))
+
+  ######################################################################
+  ################### USE ONLY A SUBSET OF IDENT CLASSES? ##############
+  ######################################################################
   
+  if (!is.null(vec_subset_idents)) {
+     seurat_obj <- SubsetData(object = seurat_obj,
+                              ident.use = vec_subset_idents, 
+                              do.scale = F, 
+                              do.center = F,
+                              subset.raw = T,
+                              do.clean = T)
+  }
+  
+  sNames_0 <- names(table(seurat_obj@ident))
+
   ######################################################################
   ################### COMPUTE PERCENT MITO, PERCENT RIBO ###############
   ######################################################################
