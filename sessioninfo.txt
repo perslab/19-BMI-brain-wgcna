@@ -1,0 +1,76 @@
+R version 3.5.3 (2019-03-11)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Storage
+
+Matrix products: default
+BLAS/LAPACK: /usr/lib64/libopenblas-r0.3.3.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] parallel  stats     graphics  grDevices datasets  utils     methods  
+[8] base     
+
+other attached packages:
+ [1] R.utils_2.9.0         R.oo_1.22.0           R.methodsS3_1.7.1    
+ [4] readr_1.3.1           liger_1.0             boot_1.3-23          
+ [7] STRINGdb_1.20.0       WGCNA_1.68            fastcluster_1.1.25   
+[10] dynamicTreeCut_1.63-1 Seurat_2.3.3          cowplot_1.0.0        
+[13] ggplot2_3.2.1         hdf5r_1.1.1           reshape2_1.4.3       
+[16] reshape_0.8.8         Matrix_1.2-17         Biobase_2.42.0       
+[19] BiocGenerics_0.28.0   dplyr_0.8.3           optparse_1.6.2       
+[22] here_0.1             
+
+loaded via a namespace (and not attached):
+  [1] snow_0.4-3            backports_1.1.4       Hmisc_4.2-0          
+  [4] plyr_1.8.4            igraph_1.2.4.1        lazyeval_0.2.2       
+  [7] splines_3.5.3         robust_0.4-18.1       digest_0.6.20        
+ [10] foreach_1.4.7         htmltools_0.3.6       lars_1.2             
+ [13] GO.db_3.7.0           gdata_2.18.0          magrittr_1.5         
+ [16] checkmate_1.9.4       memoise_1.1.0         fit.models_0.5-14    
+ [19] cluster_2.1.0         doParallel_1.0.15     mixtools_1.1.0       
+ [22] ROCR_1.0-7            matrixStats_0.54.0    colorspace_1.4-1     
+ [25] blob_1.2.0            rrcov_1.4-7           xfun_0.9             
+ [28] RCurl_1.95-4.12       crayon_1.3.4          jsonlite_1.6         
+ [31] zeallot_0.1.0         impute_1.56.0         hash_2.2.6.1         
+ [34] survival_2.44-1.1     zoo_1.8-6             iterators_1.0.12     
+ [37] ape_5.3               glue_1.3.1            gtable_0.3.0         
+ [40] kernlab_0.9-27        prabclus_2.3-1        DEoptimR_1.0-8       
+ [43] scales_1.0.0          mvtnorm_1.0-11        DBI_1.0.0            
+ [46] bibtex_0.4.2          Rcpp_1.0.2            plotrix_3.7-6        
+ [49] metap_1.1             dtw_1.21-1            htmlTable_1.13.1     
+ [52] reticulate_1.13       foreign_0.8-72        bit_1.1-14           
+ [55] proxy_0.4-23          mclust_5.4.5          SDMTools_1.1-221.1   
+ [58] preprocessCore_1.44.0 sqldf_0.4-11          Formula_1.2-3        
+ [61] stats4_3.5.3          tsne_0.1-3            htmlwidgets_1.3      
+ [64] getopt_1.20.3         gplots_3.0.1.1        RColorBrewer_1.1-2   
+ [67] fpc_2.2-3             acepack_1.4.1         modeltools_0.2-22    
+ [70] ica_1.0-2             pkgconfig_2.0.2       flexmix_2.3-15       
+ [73] nnet_7.3-12           tidyselect_0.2.5      rlang_0.4.0          
+ [76] AnnotationDbi_1.44.0  munsell_0.5.0         tools_3.5.3          
+ [79] gsubfn_0.7            RSQLite_2.1.2         ggridges_0.5.1       
+ [82] stringr_1.4.0         npsurv_0.4-0          knitr_1.24           
+ [85] bit64_0.9-7           fitdistrplus_1.0-14   pander_0.6.3         
+ [88] robustbase_0.93-5     caTools_1.17.1.2      purrr_0.3.2          
+ [91] RANN_2.6.1            pbapply_1.4-1         nlme_3.1-141         
+ [94] compiler_3.5.3        rstudioapi_0.10       png_0.1-7            
+ [97] lsei_1.2-0            tibble_2.1.3          pcaPP_1.9-73         
+[100] stringi_1.4.3         lattice_0.20-38       vctrs_0.2.0          
+[103] diffusionMap_1.1-0.1  pillar_1.4.2          BiocManager_1.30.4   
+[106] Rdpack_0.11-0         lmtest_0.9-37         data.table_1.12.2    
+[109] bitops_1.0-6          irlba_2.3.3           gbRd_0.4-11          
+[112] R6_2.4.0              latticeExtra_0.6-28   renv_0.6.0-136       
+[115] KernSmooth_2.23-15    gridExtra_2.3         IRanges_2.16.0       
+[118] codetools_0.2-16      MASS_7.3-51.4         gtools_3.8.1         
+[121] assertthat_0.2.1      chron_2.3-54          proto_1.0.0          
+[124] rprojroot_1.3-2       withr_2.1.2           S4Vectors_0.20.1     
+[127] hms_0.5.1             diptest_0.75-7        doSNOW_1.0.18        
+[130] grid_3.5.3            rpart_4.1-15          tidyr_0.8.3          
+[133] class_7.3-15          segmented_1.0-0       Rtsne_0.15           
+[136] scatterplot3d_0.3-41  base64enc_0.1-3      
