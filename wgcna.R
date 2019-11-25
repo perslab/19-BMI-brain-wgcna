@@ -2119,7 +2119,7 @@ set.seed(randomSeed)
 
 options(stringsAsFactors = F)
 
-if (is.null(resume)) {
+if (is.null(resume)) { 
   
   ######################################################################
   ############################## PACKAGES ##############################
@@ -2269,8 +2269,8 @@ if (is.null(resume)) {
           
           # Step 1: direct mapping
           mapping_direct = read.table(gzfile(mapping_mm_filepath),sep="\t",header=T, stringsAsFactors = F)
-          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(gsub("-|_", ".", row.names(seurat_obj@raw.data))), 
-                                                                                                                      toupper(gsub("-|_", ".", mapping_direct$gene_name_optimal))) ])
+          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(row.names(seurat_obj@raw.data)), 
+                                                                                                                      toupper(mapping_direct$gene_name_optimal)) ])
           
           # Step 2: map remaining using synonyms
           mapping_synonyms = read.delim(gzfile(mapping_mm_synonyms_filepath),sep="\t",header=T, stringsAsFactors = F)
@@ -2285,8 +2285,8 @@ if (is.null(resume)) {
           mapping_direct = read.csv(gzfile(mapping_hs_filepath),sep="\t",header=T, stringsAsFactors = F) # columns: ensembl_gene_id, entrezgene, hgnc_symbol
           mapping_direct$hgnc_symbol <- gsub("-|_", ".", mapping_direct$hgnc_symbol)
           # Step 1: direct mapping
-          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(gsub("-|_", ".", row.names(seurat_obj@raw.data))), 
-                                                                                                                      toupper(gsub("-|_", ".", mapping_direct$hgnc_symbol))) ])
+          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(row.names(seurat_obj@raw.data)), 
+                                                                                                                      toupper(mapping_direct$hgnc_symbol)) ])
           rm(mapping_direct)
           # save mapping file for reference and later use
           write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2327,7 +2327,8 @@ if (is.null(resume)) {
         mapping_direct = read.csv(gzfile(mapping_hs_filepath),sep="\t",header=T, stringsAsFactors = F) # columns: ensembl_gene_id, entrezgene, hgnc_symbol
         
         # Step 1: direct mapping
-        mapping = data.frame(ensembl=row.names(seurat_obj@raw.data), symbol = mapping_direct$hgnc_symbol[match(toupper(row.names(seurat_obj@raw.data)), toupper(mapping_direct$ensembl_gene_id)) ])
+        mapping = data.frame(ensembl=row.names(seurat_obj@raw.data), symbol = mapping_direct$hgnc_symbol[match(toupper(row.names(seurat_obj@raw.data)), 
+                                                                                                               toupper(mapping_direct$ensembl_gene_id)) ])
         rm(mapping_direct)
         # save mapping file for reference and later use
         write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2492,8 +2493,8 @@ if (is.null(resume)) {
   
   
   # Filter
-  idx_cellcluster_ok <- sapply(subsets, function(subset) {dim(subset@raw.data)[1]!=0}, simplify=T) %>% unlist
-  
+    idx_cellcluster_ok <- sapply(subsets, function(subset) {!is.null(rownames(subset@raw.data))}, simplify=T) %>% unlist
+   
   if (!all(idx_cellcluster_ok)) {
     log_entry <-paste0(sNames_1[!idx_cellcluster_ok], ": had no genes left after filtering out genes expressed in fewer than ", min.cells, " cells, therefore dropped")
     warning(log_entry)
@@ -2615,8 +2616,9 @@ if (is.null(resume)) {
     # Source: https://rdrr.io/cran/Seurat/src/R/plotting.R
     # score the PCs using JackStraw resampling to get an empirical null distribution to get p-values for the PCs based on the p-values of gene loadings
     
-    if (jackstrawnReplicate > 0 & genes_use == "PCA") message(sprintf("Performing JackStraw with %s replications to select genes that load on significant PCs", jackstrawnReplicate))
-    
+    if (jackstrawnReplicate > 0 & genes_use == "PCA") {
+      message(sprintf("Performing JackStraw with %s replications to select genes that load on significant PCs", jackstrawnReplicate))}
+     
     list_datExpr <- mapply(function(seurat_obj, name) {
       tryCatch({
         wrapJackStraw(seurat_obj_sub = seurat_obj, 
