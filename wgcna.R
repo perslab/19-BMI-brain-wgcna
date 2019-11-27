@@ -2204,12 +2204,12 @@ if (is.null(resume)) {
   
   dt_raw[,-1] %>% as.matrix %>% Matrix(., sparse = TRUE) -> spMat_raw
   
-  rownames(spMat_raw) <- dt_raw[[1]]
+  rownames(spMat_raw) <- dt_raw[,1][[1]]
   rm(dt_raw)
   
   df_metadata <- as.data.frame(dt_metadata)
   
-  rownames(df_metadata) <- dt_metadata$CellID
+  rownames(df_metadata) <- dt_metadata[,1][[1]]
     
   df_metadata <- df_metadata[match(colnames(spMat_raw), rownames(df_metadata)),]
   
@@ -2217,11 +2217,14 @@ if (is.null(resume)) {
                                    project=data_prefix, 
                                    meta.data = df_metadata)
  
+  rm(spMat_raw)
+  
   ######################################################################
   ################### USE ONLY A SUBSET OF IDENT CLASSES? ##############
   ######################################################################
   
-  seurat_obj <- SetAllIdent(object = seurat_obj,id = metadata_subset_col)
+  seurat_obj <- SetAllIdent(object = seurat_obj,
+                            id = metadata_subset_col)
   
   if (!is.null(vec_subset_idents)) {
      seurat_obj <- SubsetData(object = seurat_obj,
@@ -2269,13 +2272,13 @@ if (is.null(resume)) {
           
           # Step 1: direct mapping
           mapping_direct = read.table(gzfile(mapping_mm_filepath),sep="\t",header=T, stringsAsFactors = F)
-          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(row.names(seurat_obj@raw.data)), 
-                                                                                                                      toupper(mapping_direct$gene_name_optimal)) ])
+          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(gsub("-|_",".",toupper(row.names(seurat_obj@raw.data))), 
+                                                                                                                      gsub("-|_",".",toupper(mapping_direct$gene_name_optimal))) ])
           
           # Step 2: map remaining using synonyms
           mapping_synonyms = read.delim(gzfile(mapping_mm_synonyms_filepath),sep="\t",header=T, stringsAsFactors = F)
-          mapping$ensembl[ which(is.na(mapping$ensembl)) ] = mapping_synonyms$ensembl[ match( toupper(gsub("-|_", ".", mapping$symbol[which(is.na(mapping$ensembl)) ])) , 
-                                                                                              toupper(gsub("-|_", ".", mapping_synonyms$symbol))) ]
+          mapping$ensembl[ which(is.na(mapping$ensembl)) ] = mapping_synonyms$ensembl[ match( gsub("-|_",".",toupper(mapping$symbol[which(is.na(mapping$ensembl))])) , 
+                                                                                              gsub("-|_",".",toupper(mapping_synonyms$symbol)))]
           rm(mapping_direct, mapping_synonyms)
           # save mapping file for reference and later use
           write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2283,10 +2286,10 @@ if (is.null(resume)) {
         } else if (data_organism == "hsapiens") {
           
           mapping_direct = read.csv(gzfile(mapping_hs_filepath),sep="\t",header=T, stringsAsFactors = F) # columns: ensembl_gene_id, entrezgene, hgnc_symbol
-          mapping_direct$hgnc_symbol <- gsub("-|_", ".", mapping_direct$hgnc_symbol)
+          mapping_direct$hgnc_symbol <- mapping_direct$hgnc_symbol
           # Step 1: direct mapping
-          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(toupper(row.names(seurat_obj@raw.data)), 
-                                                                                                                      toupper(mapping_direct$hgnc_symbol)) ])
+          mapping = data.frame(symbol=row.names(seurat_obj@raw.data), ensembl = mapping_direct$ensembl_gene_id[ match(gsub("-|_",".",toupper(row.names(seurat_obj@raw.data))), 
+                                                                                                                      gsub("-|_",".",toupper(mapping_direct$hgnc_symbol))) ])
           rm(mapping_direct)
           # save mapping file for reference and later use
           write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2327,8 +2330,8 @@ if (is.null(resume)) {
         mapping_direct = read.csv(gzfile(mapping_hs_filepath),sep="\t",header=T, stringsAsFactors = F) # columns: ensembl_gene_id, entrezgene, hgnc_symbol
         
         # Step 1: direct mapping
-        mapping = data.frame(ensembl=row.names(seurat_obj@raw.data), symbol = mapping_direct$hgnc_symbol[match(toupper(row.names(seurat_obj@raw.data)), 
-                                                                                                               toupper(mapping_direct$ensembl_gene_id)) ])
+        mapping = data.frame(ensembl=row.names(seurat_obj@raw.data), symbol = mapping_direct$hgnc_symbol[match(gsub("-|_",".",toupper(row.names(seurat_obj@raw.data))), 
+                                                                                                               gsub("-|_",".",toupper(mapping_direct$ensembl_gene_id))) ])
         rm(mapping_direct)
         # save mapping file for reference and later use
         write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2340,11 +2343,12 @@ if (is.null(resume)) {
         
         # Step 1: direct mapping
         mapping_direct = read.table(gzfile(mapping_mm_filepath),sep="\t",header=T, stringsAsFactors = F)
-        mapping = data.frame(ensembl=row.names(seurat_obj@raw.data), symbol = mapping_direct$gene_name_optimal[ match(toupper(row.names(seurat_obj@raw.data)), toupper(mapping_direct$ensembl_gene_id)) ])
+        mapping = data.frame(ensembl=row.names(seurat_obj@raw.data), symbol = mapping_direct$gene_name_optimal[ match(gsub("-|_",".",toupper(row.names(seurat_obj@raw.data))), 
+                                                                                                                      gsub("-|_",".",toupper(mapping_direct$ensembl_gene_id))) ])
         
         # Step 2: map remaining using synonyms
         mapping_synonyms = read.delim(gzfile(mapping_mm_synonyms_filepath),sep="\t",header=T, stringsAsFactors = F)
-        mapping$symbol[ which(is.na(mapping$symbol)) ] = mapping_synonyms$symbol[ match( toupper(mapping$ensembl[which(is.na(mapping$symbol)) ]) , toupper(mapping_synonyms$ensembl)) ]
+        mapping$symbol[ which(is.na(mapping$symbol)) ] = mapping_synonyms$symbol[ match( gsub("-|_",".",toupper(mapping$ensembl[which(is.na(mapping$symbol)) ])) , gsub("-|_",".",toupper(mapping_synonyms$ensembl))) ]
         rm(mapping_direct, mapping_synonyms)
         # save mapping file for reference and later use
         write.csv(mapping, file=sprintf("%s%s_%s_%s_hgnc_to_ensembl_mapping_df.csv", tables_dir, data_prefix, run_prefix, data_organism), quote = F, row.names = F)
@@ -2430,6 +2434,8 @@ if (is.null(resume)) {
   ######## DO SEURAT PROCESSING ON SUBSETTED EXPRESSION MATRICES #######
   ######################################################################
   
+  #seurat_obj <- FilterGenes(seurat_obj, min.cells)
+  
   message("Subsetting the dataset")
   
   subsets <- lapply(sNames_0, function(name) SubsetData(seurat_obj,
@@ -2476,24 +2482,24 @@ if (is.null(resume)) {
   subsets <- subsets[idx_cellcluster_ok]
   sNames_1 <- sNames_0[idx_cellcluster_ok]
   names(subsets) <- sNames_1 
-  
-  # Filter genes expressed in fewer than min.cells in a subset as these will also lead to spurious associations and computational difficulties
+
+  #Filter genes expressed in fewer than min.cells in a subset as these will also lead to spurious associations and computational difficulties
   if (data_type=="sc") {
-    
+
     message(paste0("Filtering out genes expressed in fewer than ", min.cells, " cells"))
-    
+
     outfile = paste0(log_dir, data_prefix, "_", run_prefix, "_", "FilterGenes.txt")
     args = list("X"=subsets)
     fun = function(x) FilterGenes(x, min.cells = min.cells)
-    subsets <- safeParallel(fun=fun, 
-                            args=args, 
-                            outfile=outfile, 
+    subsets <- safeParallel(fun=fun,
+                            args=args,
+                            outfile=outfile,
                             min.cells=min.cells)
   }
-  
+
   
   # Filter
-    idx_cellcluster_ok <- sapply(subsets, function(subset) {!is.null(rownames(subset@raw.data))}, simplify=T) %>% unlist
+  idx_cellcluster_ok <- sapply(subsets, function(subset) {!is.null(rownames(subset@raw.data))}, simplify=T) %>% unlist
    
   if (!all(idx_cellcluster_ok)) {
     log_entry <-paste0(sNames_1[!idx_cellcluster_ok], ": had no genes left after filtering out genes expressed in fewer than ", min.cells, " cells, therefore dropped")
