@@ -2134,8 +2134,8 @@ if (is.null(resume)) {
   suppressPackageStartupMessages(library("parallel"))
   suppressPackageStartupMessages(library("reshape"))
   suppressPackageStartupMessages(library("reshape2"))
-  #suppressPackageStartupMessages(library("hdf5r", lib.loc ="~/R/x86_64-pc-linux-gnu-library/"))
-  suppressPackageStartupMessages(library("hdf5r", lib.loc = "/home/cbmr/lhv464/R/x86_64-pc-linux-gnu-library/3.5"))
+  #suppressPackageStartupMessages(library("hdf5r", lib.loc = "/home/cbmr/lhv464/R/x86_64-pc-linux-gnu-library/3.5"))
+  suppressPackageStartupMessages(library("hdf5r"))
   suppressPackageStartupMessages(library("Seurat"))
   
   message("Packages loaded")
